@@ -1,0 +1,38 @@
+version: '3.8'
+
+networks:
+  chroma-net:
+    driver: bridge
+
+services:
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chromadb
+    networks:
+      - chroma-net
+    ports:
+      - "8001:8000"
+    volumes:
+      - "C:\\root\\opt\\workspace\\langchain\\agentic\\dessertation\\chromadb:/data"
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=TRUE
+      - CHROMA_SERVER_AUTH_CREDENTIALS=my-secret-token
+      - CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER=chromadb.auth.token.TokenConfigServerAuthCredentialsProvider
+      - CHROMA_SERVER_AUTH_PROVIDER=chromadb.auth.token.TokenAuthServerProvider
+      - CHROMA_SERVER_AUTH_TOKEN_TRANSPORT_HEADER=X_CHROMA_TOKEN
+
+  chromamcp:
+    image: custom/chroma-mcp:latest
+    container_name: chromamcp
+    networks:
+      - chroma-net
+    ports:
+      - "8000:8000"
+    environment:
+      - CHROMA_CLIENT_TYPE=http
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - CHROMA_CUSTOM_AUTH_CREDENTIALS=my-secret-token
+      - CHROMA_AUTH_HEADER=X_CHROMA_TOKEN
+      - CHROMA_SSL=False
