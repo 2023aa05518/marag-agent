@@ -11,7 +11,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 # Removed unused ChatOpenAI import
 from langchain_google_genai import ChatGoogleGenerativeAI
-from mcp import ClientSession
+# from mcp import ClientSession
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 # Load environment variables from .env file
@@ -151,6 +151,9 @@ async def main(query):
                 print("Loading tools...")
                 tools = await load_mcp_tools(session=session)
                 print(f"Loaded {len(tools)} tools")
+                print(f"Available tools :")
+                for  tool in tools:
+                    print(f"\t  {tool.name}")
                 
                 print("Creating agent...")
                 agent = create_react_agent(model=llm, tools=tools)
@@ -192,7 +195,7 @@ async def main(query):
 
 def get_query():
     
-    query = "do nothing"
+    # query = "do nothing"
     # query = "Give me list of collection for tenants umtest and databases testdb use chroma list collection "
     #Note:  create a new database is not supported.   This is a good test to see that ai is not doing anything unexpected.
   
@@ -203,7 +206,11 @@ def get_query():
     # query =  "give list of collection in database umeshdb"
     
     query ="how many documents are in the collection professional_services in database umeshdb"
-    
+
+    # query = "give me a sample question  to test the leadership  capabilities using  database docs"
+    # query = "delete collection leadership_test_cases"
+    # query = "give me few behavioral questions from tenent ptc and database docs"
+    # query = "how many documents are in the collection pdf_chunks in database docs"
     
     
     return query
