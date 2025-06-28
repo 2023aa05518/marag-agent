@@ -8,11 +8,13 @@ from src.utils.pretty_print import pretty_print_messages
 import asyncio
 from src.utils.mcp_utils import get_mcp_server_config
 from langchain.schema import HumanMessage
-
+# from chromadb.config import Settings
 # from IPython.display import display, Image
 # MODEL = get_llm()
 
 async  def main_pipeline():
+    # settings = settings()
+    # settings.te
     client = MultiServerMCPClient(get_mcp_server_config())
     async with client.session("chroma") as session:
         tools = await load_mcp_tools(session)
@@ -27,6 +29,7 @@ async  def main_pipeline():
                 "INSTRUCTIONS:\n"
                 "- extract the collection name from query text . if not present then return with valid reason and ask for collection information."
                 "- query collection name  using  given query_text "
+                "- Return tenent and database name along with collection name in the response to supervisor"
                 "- Assist ONLY with retrieving query results related to vector database, DO NOT do any other activity\n"
                 "- After you're done with your tasks, respond to the supervisor directly\n"
                 "- Respond ONLY with the results of your work, do NOT include ANY other text."
@@ -47,18 +50,36 @@ async  def main_pipeline():
             )
         )
 
+        critique_agent = create_react_agent(
+            name="critique_agent",
+            model=get_llm(),
+            tools=[],
+            prompt=(
+                "You are a critique agent. Your job is to judge the answer and the context retrieved by the retriever agent.\n\n"
+                "INSTRUCTIONS:\n"
+                "- Check if the answer is supported by the provided context.\n"
+                "- If you find hallucination (information not present in the context) , "
+                "- Respond with a message to the supervisor to re-run the query with more context.\n"
+                "- If the answer is from the provided context , respond with 'APPROVED' and a brief justification.\n"
+                "- Respond ONLY with your judgment and reasoning, do NOT include any other text."
+            )
+        )
 
         supervisor = create_supervisor(
             model=get_llm(),
-            # model=init_chat_model(get_llm()),
-            # agents=[retriever_query_agent ],
-            agents=[retriever_query_agent ,  doc_count_agent],
+            agents=[retriever_query_agent, critique_agent],
+            # agents=[retriever_query_agent],
             prompt=(
                 "You are a supervisor managing agents:\n"
-                "- a retriever agent. Assign document query retrieval related tasks to this agent\n"
-                "-  a doc count agent. assign count related task to  this agent"
-                "Assign work to one agent at a time, do not call agents in parallel.\n"
-                "Do not do any work yourself."
+                "- A retriever agent for document queries.\n"
+                # "- A doc count agent for counting documents.\n"
+                "- A critique agent (judge) to check for hallucination and completeness.\n"
+                "Workflow:\n"
+                "1. Assign the query to the retriever agent.\n"
+                "2. Pass the retriever's answer and context to the critique agent.\n"
+                "3. If the critique agent requests more context, re-run the retriever agent with an expanded query.\n"
+                "4. Repeat process only one  time the critique agent approves the answer.\n"
+                "Do not do any work yourself. Assign work to one agent at a time."
             ),
             add_handoff_back_messages=True,
             output_mode="full_history",
@@ -66,8 +87,8 @@ async  def main_pipeline():
 
         chunk = None
         query = """
-                query_text=  What are the primary environmental challenges india is facing. Fetch results k=2 from collection name=my_docs .  
-                Get the total doucment in the collection.
+                query_text=  What are the primary environmental challenges india is facing. Fetch results k=2.
+                from collection name=docs .  
                 Format the resutls in human readable form and generate output in separate rows.
 
 
@@ -76,9 +97,9 @@ async  def main_pipeline():
             {
                 "messages": [
                     {
-                        # "role": "user",
-                        # "content": f"{query}",
-                        HumanMessage(content=query)
+                        "role": "user",
+                        "content": f"{query}",
+                        # HumanMessage(content=query)
                     }
                 ]
             }

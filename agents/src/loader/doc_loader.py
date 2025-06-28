@@ -6,7 +6,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import TokenTextSplitter
 # from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.schema import Document
-# import chromadb
+import chromadb
 
 # Define data directory
 base_dir = Path(__file__).parent
@@ -73,46 +73,46 @@ def get_doc_collection(chunks: List[Document]) -> Dict:
     print("✅ Document collection generated")
     return {"ids": ids, "documents": texts, "metadatas": metadatas}
 
-def generate_embeddings_and_store(doc_collection: Dict, collection):
+def write_to_db(doc_collection: Dict, collection):
     """Generate embeddings and store in ChromaDB"""
-    # print("🔄 Generating embeddings and storing...")
+    print("🔄 Storing...to database ")
 
     # Generate embeddings
     # embeddings_model = HuggingFaceEmbeddings( model_name="sentence-transformers/all-MiniLM-L6-v2" )
     # embeddings = embeddings_model.embed_documents(doc_collection["documents"])
 
     # Store in ChromaDB
-    # collection.add(
-    #     ids=doc_collection["ids"],
-    #     documents=doc_collection["documents"],
-    #     embeddings=embeddings,
-    #     metadatas=doc_collection["metadatas"],
-    # )
+    collection.add(
+        ids=doc_collection["ids"],
+        documents=doc_collection["documents"],
+        # embeddings=embeddings,
+        metadatas=doc_collection["metadatas"],
+    )
 
     print(f"✅ Stored {len(doc_collection['ids'])} chunks with embeddings in ChromaDB")
 
 def setup_chromadb_client():
     """Setup ChromaDB client and collection"""
-    # print("🔄 Creating ChromaDB client connection...")
-    # try:
-    #     client = chromadb.HttpClient(
-    #         host="localhost",
-    #         port=8001,
-    #         headers={"Authorization": "Bearer my-secret-token"},
-    #         tenant="ptc",
-    #         database="docs"
-    #     )
-    #     heartbeat = client.heartbeat()
-    #     print(f"✅ ChromaDB client created successfully! Server heartbeat: {heartbeat}")
+    print("🔄 Creating ChromaDB client connection...")
+    try:
+        client = chromadb.HttpClient(
+            host="localhost",
+            port=8001,
+            headers={"Authorization": "Bearer my-secret-token"},
+            # tenant="default",
+            # database="default"
+        )
+        heartbeat = client.heartbeat()
+        print(f"✅ ChromaDB client created successfully! Server heartbeat: {heartbeat}")
         
-    #     collection = client.get_or_create_collection(name="requirements")
-    #     print("✅ ChromaDB setup complete")
-    #     return client, collection
-    # except Exception as e:
-    #     print(f"❌ Error creating ChromaDB client: {e}")
-    #     return None, None
+        collection = client.get_or_create_collection(name="docs")
+        print("✅ ChromaDB setup complete")
+        return client, collection
+    except Exception as e:
+        print(f"❌ Error creating ChromaDB client: {e}")
+        return None, None
     
-def main_pipeline():
+def loader_pipeline():
     """Main execution pipeline"""
     print("🚀 Starting PDF loader pipeline...")
     
@@ -124,17 +124,19 @@ def main_pipeline():
 
     # Get doc collection
     doc_collection = get_doc_collection(chunks)
-    return doc_collection
+    # return doc_collection
     # # Setup ChromaDB
-    # client, collection = setup_chromadb_client()
-    # if client is None or collection is None:
-    #     print("❌ Failed to setup ChromaDB. Exiting...")
-    #     return
+
+    client, collection = setup_chromadb_client()
+    if client is None or collection is None:
+        print("❌ Failed to setup ChromaDB. Exiting...")
+        return
     
-    # # Generate embeddings and store
+    # write to db store
     # generate_embeddings_and_store(doc_collection, collection)
+    write_to_db(doc_collection, collection)
     
     print("🎉 Pipeline completed successfully!")
 
 if __name__ == "__main__":
-    main_pipeline()
+    loader_pipeline()

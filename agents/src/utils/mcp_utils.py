@@ -44,7 +44,9 @@ def get_mcp_server_config():
     server_config ={
             "chroma": {
                 "url": "http://localhost:8000/sse", 
-                "transport": "sse"
+                "transport": "sse",
+                # "tenant": "stp",
+                # "database": "support"
             }
     }
     
