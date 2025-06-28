@@ -16,6 +16,7 @@ dependencies = [
     "langgraph-supervisor>=0.0.27",
     "langsmith>=0.3.45",
     "mcp[cli]>=1.2.1",
+    "opik>=1.7.39",
     "pypdf>=5.6.1",
     "pytest>=8.3.5",
     "pytest-asyncio>=0.26.0",

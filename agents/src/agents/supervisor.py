@@ -11,6 +11,10 @@ from langchain.schema import HumanMessage
 # from chromadb.config import Settings
 # from IPython.display import display, Image
 # MODEL = get_llm()
+# Your supervisor would become:
+from opik.integrations.langchain import OpikTracer
+
+# Create tracer with graph visualization
 
 async  def main_pipeline():
     # settings = settings()
@@ -93,6 +97,11 @@ async  def main_pipeline():
 
 
                 """
+        opik_tracer = OpikTracer(
+            graph=supervisor.get_graph(xray=True),
+            tags=["multi-agent", "marag"],
+            metadata={"environment": "development", "version": "1.0"}
+        )
         async for chunk in supervisor.astream(
             {
                 "messages": [
@@ -102,7 +111,7 @@ async  def main_pipeline():
                         # HumanMessage(content=query)
                     }
                 ]
-            }
+            },config={"callbacks":[opik_tracer]}
         ):
             pretty_print_messages(chunk, last_message=True)
 
