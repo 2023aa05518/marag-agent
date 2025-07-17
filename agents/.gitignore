@@ -1,8 +1,15 @@
+# General dot files (except .gitignore)
+.*
+!.gitignore
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# Python version file
+.python-version
 
 # Virtual environments
 .env

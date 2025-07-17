@@ -10,8 +10,8 @@ from chromadb.config import Settings
 # For a remote Chroma server (HTTP client)
 admin_client = chromadb.AdminClient(Settings(
     chroma_api_impl="chromadb.api.fastapi.FastAPI",
-    chroma_server_host="localhost", # Replace with your Chroma server host
-    chroma_server_http_port="8001", # Replace with your Chroma server port
+    chroma_server_host="localhost", 
+    chroma_server_http_port="8001", 
 ))
 
 try:
