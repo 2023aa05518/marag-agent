@@ -4,6 +4,8 @@
 
     . ./setup.sh
     uv run src/agents/supervisor.py
+    or
+    uv run main.py
 
 ## Environment Configuration
 
