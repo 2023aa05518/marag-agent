@@ -29,3 +29,7 @@ OPIK_WORKSPACE = ""
 3. import dependencies in code
 4. initialize the OpikTracer object
 5. implement callback in async invocation command of supervisor
+
+## Command to Run with  Debug logs
+
+$env:LOG_LEVEL = "DEBUG"; $env:PYTHONPATH = (Get-Location).Path; uv run tests/test_simple_pipeline.py

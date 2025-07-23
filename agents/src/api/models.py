@@ -30,6 +30,7 @@ class QueryResponse(BaseModel):
     status: str = Field(..., description="Status of the request (success/error)")
     result: str = Field(..., description="The processed result from agents")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    validation: Optional[Dict[str, Any]] = Field(None, description="RAGAS validation results if enabled")
     timestamp: datetime = Field(default_factory=datetime.now)
     
     class Config:
@@ -41,6 +42,14 @@ class QueryResponse(BaseModel):
                     "agents_used": ["retriever_query_agent", "critique_agent"],
                     "execution_time_seconds": 5.2,
                     "tokens_used": 1250
+                },
+                "validation": {
+                    "passed": True,
+                    "overall_score": 0.85,
+                    "metrics": {
+                        "faithfulness": 0.9,
+                        "answer_relevancy": 0.8
+                    }
                 },
                 "timestamp": "2025-07-07T10:30:00"
             }
