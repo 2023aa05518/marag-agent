@@ -162,6 +162,7 @@ class SupervisorPipeline:
                         messages.append(chunk)
                 
                 # Extract final result
+                logger.debug(f"Pipeline result extraction starting, chunk available: {chunk is not None}")
                 if chunk is not None:
                     final_message_history = chunk["supervisor"]["messages"]
                     # Get the last message as the final answer
@@ -169,6 +170,7 @@ class SupervisorPipeline:
                 else:
                     final_answer = "No output from supervisor."
                 
+                logger.debug(f"Final answer extracted: {len(final_answer)} characters")
                 execution_time = time.time() - start_time
                 
                 # Prepare metadata
@@ -181,10 +183,52 @@ class SupervisorPipeline:
                     "tools_available": len(tools)
                 }
                 
+                logger.debug(f"Validation check - enable_validation: {getattr(request, 'enable_validation', 'MISSING')}")
+                
+                # Run RAGAS validation if enabled
+                validation_result = None
+                logger.debug(f"Validation components - enable_validation: {request.enable_validation}, "
+                           f"has_ragas_validator: {self.ragas_validator is not None}, "
+                           f"has_agent_output_processor: {self.agent_output_processor is not None}")
+                if request.enable_validation and self.ragas_validator and self.agent_output_processor:
+                    try:
+                        # Prepare agent outputs for validation
+                        agent_outputs = {
+                            "messages": final_message_history,
+                            "supervisor_result": final_answer
+                        }
+                        
+                        # LOG 1: Pipeline sending to AgentOutputProcessor
+                        logger.debug(f"Pipeline sending to AgentOutputProcessor: {len(final_message_history)} messages, "
+                                   f"supervisor result: {len(final_answer)} chars")
+                        
+                        # Process outputs to RAGAS format
+                        ragas_input = self.agent_output_processor.prepare_ragas_input(
+                            query=request.query_text,
+                            agent_outputs=agent_outputs
+                        )
+                        
+                        # Validate with RAGAS
+                        validation = await self.ragas_validator.validate_response(ragas_input)
+                        
+                        validation_result = {
+                            "passed": validation.passed,
+                            "overall_score": validation.overall_score,
+                            "metrics": validation.metrics
+                        }
+                        
+                    except Exception as e:
+                        logger.error(f"RAGAS validation failed: {e}")
+                        validation_result = {
+                            "passed": False,
+                            "error": str(e)
+                        }
+                
                 return QueryResponse(
                     status="success",
                     result=final_answer,
-                    metadata=metadata
+                    metadata=metadata,
+                    validation=validation_result
                 )
             
         except Exception as e:

@@ -14,52 +14,51 @@ class AgentOutputProcessor:
     
     def extract_contexts(self, agent_messages: List[Dict[str, Any]]) -> List[str]:
         """
-        Extract contexts from agent messages, handling structured responses and legacy formats.
+        Extract contexts from LangChain messages using ToolMessage pattern.
         """
         contexts = []
         
+        def flatten_to_strings(item):
+            """Recursively flatten nested structures to strings"""
+            if isinstance(item, str):
+                return [item] if item.strip() else []
+            elif isinstance(item, list):
+                flattened = []
+                for subitem in item:
+                    flattened.extend(flatten_to_strings(subitem))
+                return flattened
+            else:
+                return [str(item)] if str(item).strip() else []
+        
         for message in agent_messages:
-            if message.get("name") == "retriever_agent":
-                # Try structured response first (new format)
-                if "structured_response" in message:
-                    response = message["structured_response"]
-                    if isinstance(response, dict):
-                        # Extract sources from structured response
-                        sources = response.get("sources", [])
-                        if sources:
-                            contexts.extend([self._clean_text(source) for source in sources])
-                        
-                        # Also include the reasoning as context
-                        reasoning = response.get("reasoning", "")
-                        if reasoning:
-                            contexts.append(self._clean_text(reasoning))
-                        
-                        continue
-                
-                content = message.get("content", "")
-                
-                # Try to parse as JSON (legacy format)
+            # Use the working pattern: check for ToolMessage type
+            if hasattr(message, '__class__') and message.__class__.__name__ == 'ToolMessage':
+                # Skip handoff messages
+                if hasattr(message, 'content') and "transferred" in message.content.lower():
+                    continue
+                    
+                # Parse tool response for document content
                 try:
-                    parsed_content = json.loads(content)
-                    if isinstance(parsed_content, dict):
-                        # Extract sources from JSON structure
-                        sources = parsed_content.get("sources", [])
-                        if sources:
-                            contexts.extend([self._clean_text(source) for source in sources])
+                    if message.content.startswith('{') or message.content.startswith('['):
+                        tool_data = json.loads(message.content)
                         
-                        # Also include the reasoning as context
-                        reasoning = parsed_content.get("reasoning", "")
-                        if reasoning:
-                            contexts.append(self._clean_text(reasoning))
-                        
-                        continue
-                except (json.JSONDecodeError, TypeError):
-                    # Not JSON, fall back to legacy processing
-                    pass
-                
-                # Legacy format processing
-                if "context" in content.lower() or "document" in content.lower():
-                    contexts.append(self._clean_text(content))
+                        if isinstance(tool_data, dict):
+                            if 'documents' in tool_data:
+                                flattened = flatten_to_strings(tool_data['documents'])
+                                contexts.extend([self._clean_text(item) for item in flattened])
+                            elif 'content' in tool_data:
+                                flattened = flatten_to_strings(tool_data['content'])
+                                contexts.extend([self._clean_text(item) for item in flattened])
+                        elif isinstance(tool_data, list):
+                            flattened = flatten_to_strings(tool_data)
+                            contexts.extend([self._clean_text(item) for item in flattened])
+                    else:
+                        if message.content.strip():
+                            contexts.append(self._clean_text(message.content))
+                            
+                except json.JSONDecodeError:
+                    if message.content.strip():
+                        contexts.append(self._clean_text(message.content))
         
         return contexts
     
@@ -103,6 +102,10 @@ class AgentOutputProcessor:
         """
         agent_messages = agent_outputs.get("messages", [])
         supervisor_result = agent_outputs.get("supervisor_result", "")
+        
+        # LOG 2: AgentOutputProcessor received data
+        logger.debug(f"AgentOutputProcessor received: {len(agent_messages)} messages, "
+                    f"supervisor result: {len(supervisor_result)} chars")
         
         # Extract contexts from structured messages
         contexts = self.extract_contexts(agent_messages)
