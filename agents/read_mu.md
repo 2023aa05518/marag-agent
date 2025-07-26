@@ -1,5 +1,9 @@
 # Multi-Agent MARAG System
 
+## Run uvicorn
+
+uvicorn main:app --host 0.0.0.0 --port 8100 --reload
+
 ## How to Execute
 
     . ./setup.sh

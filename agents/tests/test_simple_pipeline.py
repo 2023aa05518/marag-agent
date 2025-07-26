@@ -5,6 +5,7 @@ Test pipeline with environmental query from supervisor.py
 import asyncio
 from src.agents.pipeline import SupervisorPipeline
 from src.validation.ragas_validator import RAGASValidator
+from src.services.llm_provider import LLMProvider
 from src.validation.agent_output_processor import AgentOutputProcessor
 from src.api.models import QueryRequest
 from src.utils.pretty_print import pretty_print_messages
@@ -20,11 +21,13 @@ async def main_pipeline():
     Now uses the new SupervisorPipeline class with validation.
     """
     # Create validation components
-    ragas_validator = RAGASValidator()
+    llm_provider = LLMProvider()
+    ragas_validator = RAGASValidator(llm_provider=llm_provider)
     agent_output_processor = AgentOutputProcessor()
     
     # Create pipeline with validation
     pipeline = SupervisorPipeline(
+        llm_provider=llm_provider,
         ragas_validator=ragas_validator,
         agent_output_processor=agent_output_processor
     )

@@ -9,14 +9,15 @@ from ragas.metrics import (
 )
 from datasets import Dataset
 from src.validation.models import RAGASInput, ValidationResult, ValidationConfig
-from src.utils.llm_utils import get_llm
+from src.services import LLMProvider
 from langchain_huggingface import HuggingFaceEmbeddings
 
 logger = logging.getLogger(__name__)
 
 
 class RAGASValidator:
-    def __init__(self, config: ValidationConfig = None):
+    def __init__(self, llm_provider: LLMProvider, config: ValidationConfig = None):
+        self.llm_provider = llm_provider
         self.config = config or ValidationConfig()
         self.metrics = [
             faithfulness,
@@ -24,18 +25,16 @@ class RAGASValidator:
             context_precision,
             context_recall
         ]
-        logger.info("RAGASValidator initialized")
+        # logger.info("RAGASValidator initialized")
     
     async def validate_response(self, validation_input: RAGASInput) -> ValidationResult:
         try:
-            logger.info(f"Starting RAGAS validation for question: {validation_input.question}")
-            
+            logger.info("Validation: RAGAS started")
             # LOG 3: RAGASValidator received data for evaluation
             logger.debug(f"RAGAS validation input - question: {(validation_input.question)} chars, "
                         f"contexts: {(validation_input.contexts)} items, "
                         f"answer: {(validation_input.answer)} chars")
-            
-            llm = get_llm()
+            llm = self.llm_provider.get("gemini")
             embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
             
             # Create dataset with all columns for compatibility
@@ -97,7 +96,7 @@ class RAGASValidator:
                 should_retry=not passed and overall_score > 0.4
             )
             
-            logger.info(f"RAGAS validation completed: passed={passed}, score={overall_score:.3f}")
+            logger.info("Validation: RAGAS completed")
             return validation_result
             
         except Exception as e:

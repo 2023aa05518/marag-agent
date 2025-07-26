@@ -1,19 +1,25 @@
-"""
-Pydantic models for API requests and responses.
-"""
+
 
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class QueryRequest(BaseModel):
-    """Request model for query endpoint"""
+   
     query_text: str = Field(..., description="The query text to process")
     collection_name: str = Field(default="docs", description="ChromaDB collection name")
     k: int = Field(default=2, description="Number of results to fetch")
     enable_validation: bool = Field(default=False, description="Enable RAGAS validation of the response")
     
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        logger.info("QueryRequest instantiated")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -26,13 +32,18 @@ class QueryRequest(BaseModel):
 
 
 class QueryResponse(BaseModel):
-    """Response model for query endpoint"""
+ 
     status: str = Field(..., description="Status of the request (success/error)")
     result: str = Field(..., description="The processed result from agents")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
     validation: Optional[Dict[str, Any]] = Field(None, description="RAGAS validation results if enabled")
     timestamp: datetime = Field(default_factory=datetime.now)
     
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        logger.info("QueryResponse instantiated")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -57,7 +68,7 @@ class QueryResponse(BaseModel):
 
 
 class ErrorResponse(BaseModel):
-    """Error response model"""
+
     status: str = "error"
     error: str = Field(..., description="Error message")
     details: Optional[str] = Field(None, description="Additional error details")

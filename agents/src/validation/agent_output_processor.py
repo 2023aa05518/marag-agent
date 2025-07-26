@@ -16,6 +16,7 @@ class AgentOutputProcessor:
         """
         Extract contexts from LangChain messages using ToolMessage pattern.
         """
+        logger.info("AgentOutputProcessor: Extracting contexts from messages")
         contexts = []
         
         def flatten_to_strings(item):
@@ -66,6 +67,7 @@ class AgentOutputProcessor:
         """
         Extract final answer, handling structured responses and legacy formats.
         """
+        logger.info("AgentOutputProcessor: Extracting final answer")
         if not supervisor_result:
             return ""
         
@@ -97,28 +99,21 @@ class AgentOutputProcessor:
         return self._clean_text(' '.join(answer_lines))
     
     def prepare_ragas_input(self, query: str, agent_outputs: Dict[str, Any]) -> RAGASInput:
-        """
-        Prepare RAGAS input from agent outputs, handling both legacy and structured formats.
-        """
+        logger.info("AgentOutputProcessor: Started")
         agent_messages = agent_outputs.get("messages", [])
         supervisor_result = agent_outputs.get("supervisor_result", "")
-        
         # LOG 2: AgentOutputProcessor received data
         logger.debug(f"AgentOutputProcessor received: {len(agent_messages)} messages, "
                     f"supervisor result: {len(supervisor_result)} chars")
-        
         # Extract contexts from structured messages
         contexts = self.extract_contexts(agent_messages)
-        
         # If no contexts found in messages, try to extract from contexts field
         if not contexts:
             contexts = agent_outputs.get("contexts", [])
-        
         # Extract final answer
         answer = self.extract_final_answer(supervisor_result)
-        
         logger.debug(f"Prepared RAGAS input: {len(contexts)} contexts, answer length: {len(answer)}")
-        
+        logger.info("AgentOutputProcessor: Completed")
         return RAGASInput(
             question=query,
             contexts=contexts,

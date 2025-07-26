@@ -40,7 +40,8 @@ def test_query_endpoint():
     
     # Same query as test_simple_pipeline.py
     query_data = {
-        "query_text": "What are the primary environmental challenges India is facing?",
+        # "query_text": "What are the primary environmental challenges India is facing?",
+        "query_text": "Why is the sky blue?",
         "collection_name": "docs",
         "k": 2,
         "enable_validation": True
@@ -131,18 +132,21 @@ def main():
     print("Make sure the API server is running: python main.py")
     print("=" * 60)
     
-    # Run tests
+    # Run health check first
     health_ok = test_health_endpoint()
+    if not health_ok:
+        print("\n❌ Health check failed. API server is not reachable or unhealthy.")
+        print("Exiting tests early. Please start the API server and retry.")
+        exit(1)
+    # Only run further tests if health check passes
     info_ok = test_api_info_endpoint()
     query_ok = test_query_endpoint()
-    
     # Summary
     print("\n" + "=" * 60)
     print("Test Summary:")
     print(f"Health Check: {'✅ PASS' if health_ok else '❌ FAIL'}")
     print(f"API Info: {'✅ PASS' if info_ok else '❌ FAIL'}")
     print(f"Query Processing: {'✅ PASS' if query_ok else '❌ FAIL'}")
-    
     if all([health_ok, info_ok, query_ok]):
         print("\n🎉 All tests passed!")
         return 0

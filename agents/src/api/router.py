@@ -1,7 +1,3 @@
-"""
-FastAPI router for multi-agent query processing.
-Provides RESTful endpoints for the supervisor pipeline.
-"""
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
@@ -14,13 +10,10 @@ from src.api.models import QueryRequest, QueryResponse, ErrorResponse
 from src.agents.pipeline import SupervisorPipeline
 from src.api.dependencies import get_supervisor_pipeline
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create router
 router = APIRouter(prefix="/api/v1", tags=["Multi-Agent Query"])
-
 
 @router.post(
     "/query",
@@ -32,41 +25,19 @@ async def process_query(
     request: QueryRequest,
     pipeline: SupervisorPipeline = Depends(get_supervisor_pipeline)
 ) -> QueryResponse:
-    """
-    Process a query through the multi-agent supervisor system.
-    
-    The system will:
-    1. Use the retriever agent to fetch relevant documents from ChromaDB
-    2. Use the critique agent to validate the response for hallucinations
-    3. Return the approved result with metadata
-    
-    Args:
-        request: Query request containing the question and parameters
-        
-    Returns:
-        QueryResponse with the processed result and execution metadata
-        
-    Raises:
-        HTTPException: If the pipeline fails to process the query
-    """
-    # Generate request ID for tracking
+   
     request_id = str(uuid.uuid4())[:8]
     start_time = time.time()
     
     try:
         logger.info(f"[{request_id}] Starting query processing")
-        logger.debug(f"[{request_id}] Request details - Query: '{request.query_text[:100]}...', Collection: '{request.collection_name}', K: {request.k}")
         
-        # Pipeline is automatically injected by FastAPI
-        # Process the query through the pipeline
         result = await pipeline.process_query(request)
         
         execution_time = time.time() - start_time
         
-        # Log the outcome
         if result.status == "success":
             logger.info(f"[{request_id}] Query processed successfully in {execution_time:.2f}s")
-            logger.debug(f"[{request_id}] Result length: {len(result.result)} chars, Agents used: {result.metadata.get('agents_used', [])}")
         else:
             logger.warning(f"[{request_id}] Query processing failed after {execution_time:.2f}s: {result.result}")
         
@@ -89,20 +60,13 @@ async def process_query(
 async def health_check(
     pipeline: SupervisorPipeline = Depends(get_supervisor_pipeline)
 ) -> Dict[str, Any]:
-    """
-    Health check endpoint to verify system status.
-    
-    Returns:
-        Dictionary with system health information
-    """
+
     health_check_id = str(uuid.uuid4())[:8]
     start_time = time.time()
     
     try:
         logger.debug(f"[{health_check_id}] Performing health check")
         
-        # Pipeline is automatically injected by FastAPI
-        # Check if pipeline can be initialized
         await pipeline.initialize()
         
         execution_time = time.time() - start_time
@@ -135,12 +99,7 @@ async def health_check(
     description="Get information about the multi-agent API"
 )
 async def api_info() -> Dict[str, Any]:
-    """
-    Get API information and available endpoints.
-    
-    Returns:
-        Dictionary with API information
-    """
+
     return {
         "service": "Multi-Agent MARAG System",
         "version": "1.0.0",
@@ -165,19 +124,13 @@ async def api_info() -> Dict[str, Any]:
 async def get_metrics(
     pipeline: SupervisorPipeline = Depends(get_supervisor_pipeline)
 ) -> Dict[str, Any]:
-    """
-    Get performance metrics for monitoring and observability.
-    
-    Returns:
-        Dictionary with performance metrics
-    """
+
     metrics_id = str(uuid.uuid4())[:8]
     start_time = time.time()
     
     try:
         logger.debug(f"[{metrics_id}] Collecting metrics")
         
-        # Get pipeline metrics
         pipeline_metrics = pipeline.get_performance_metrics()
         
         execution_time = time.time() - start_time
@@ -189,7 +142,7 @@ async def get_metrics(
             "metrics_collection_time_ms": round(execution_time * 1000, 2),
             "pipeline": pipeline_metrics,
             "endpoints": {
-                "total_requests": "N/A",  # Could add request counters
+                "total_requests": "N/A",  
                 "active_requests": "N/A",
                 "error_rate": "N/A"
             }

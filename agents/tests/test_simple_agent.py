@@ -6,7 +6,7 @@ from langchain_mcp_adapters.tools import load_mcp_tools
 from langgraph.prebuilt import create_react_agent
 import asyncio
 from src.utils.mcp_utils import get_mcp_server_config
-from src.utils.llm_utils import get_llm
+from src.services import LLMProvider
 from src.loader.doc_loader import loader_pipeline
 import  json
 from chromadb.config import Settings
@@ -41,7 +41,8 @@ async def main():
     async with client.session("chroma") as session:
         tools = await load_mcp_tools(session)
  
-        llm = get_llm()
+        llm_provider = LLMProvider()
+        llm = llm_provider.get("gemini")
         agent = create_react_agent(llm, tools)
  
         # Example flow:

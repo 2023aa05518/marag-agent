@@ -1,6 +1,5 @@
 """
 SupervisorPipeline: Multi-agent processing pipeline with supervisor coordination.
-Features dynamic agent creation and tool-based retrieval.
 """
 
 import asyncio
@@ -13,43 +12,34 @@ from langgraph.prebuilt import create_react_agent
 from langgraph_supervisor import create_supervisor
 from opik.integrations.langchain import OpikTracer
 
-from src.utils.llm_utils import get_llm
+from src.services import LLMProvider
 from src.utils.mcp_utils import get_mcp_server_config
 from src.api.models import QueryRequest, QueryResponse
 
-# Setup logging
 logger = logging.getLogger(__name__)
 
 
 class SupervisorPipeline:
-    """
-    Multi-agent processing pipeline with supervisor coordination.
-    Creates agents dynamically per query and coordinates their execution.
-    """
     
-    def __init__(self, ragas_validator=None, agent_output_processor=None):
+    def __init__(self, llm_provider: LLMProvider, ragas_validator=None, agent_output_processor=None):
+        self.llm_provider = llm_provider
         self.client = None
         self._initialized = False
         self.ragas_validator = ragas_validator
         self.agent_output_processor = agent_output_processor
-        logger.debug("SupervisorPipeline instance created")
     
     async def initialize(self):
-        """Initialize MCP client"""
         if self._initialized:
             return
-            
-        # Setup MCP client only - tools and agents will be created per query
-        # Note: MultiServerMCPClient doesn't need explicit connect() call
         self.client = MultiServerMCPClient(get_mcp_server_config())
         self._initialized = True
-        logger.info("SupervisorPipeline initialized")
+        logger.info("Pipeline: Started")
     
     def _create_retriever_agent(self, tools: List[Any]) -> Any:
-        """Create a retriever agent with available tools"""
-        return create_react_agent(
+        logger.info("Agent: Retriever started")
+        agent = create_react_agent(
             name="retriever_query_agent",
-            model=get_llm(),
+            model=self.llm_provider.get("gemini"),
             tools=tools,
             prompt=(
                 "You are a document retriever agent. your job is to query collection and return the relevant records\n\n"
@@ -62,12 +52,14 @@ class SupervisorPipeline:
                 "- Respond ONLY with the results of your work, do NOT include ANY other text."
             )
         )
+        logger.info("Agent: Retriever completed")
+        return agent
     
     def _create_critique_agent(self) -> Any:
-        """Create a critique agent for answer evaluation"""
-        return create_react_agent(
+        logger.info("Agent: Critique started")
+        agent = create_react_agent(
             name="critique_agent",
-            model=get_llm(),
+            model=self.llm_provider.get("gemini"),
             tools=[],
             prompt=(
                 "You are a critique agent. Your job is to judge the answer and the context retrieved by the retriever agent.\n\n"
@@ -79,11 +71,13 @@ class SupervisorPipeline:
                 "- Respond ONLY with your judgment and reasoning, do NOT include any other text."
             )
         )
+        logger.info("Agent: Critique completed")
+        return agent
     
     def _create_supervisor_agent(self, agents: List[Any]) -> Any:
-        """Create a supervisor agent for coordination"""
-        return create_supervisor(
-            model=get_llm(),
+        logger.info("Agent: Supervisor started")
+        agent = create_supervisor(
+            model=self.llm_provider.get("gemini"),
             agents=agents,
             prompt=(
                 "You are a supervisor managing agents:\n"
@@ -99,54 +93,29 @@ class SupervisorPipeline:
             add_handoff_back_messages=True,
             output_mode="full_history",
         ).compile()
+        logger.info("Agent: Supervisor completed")
+        return agent
     
     def _format_query(self, request: QueryRequest) -> str:
-        """Format user query for agents"""
         return f"query_text= {request.query_text}. Fetch results k={request.k}. from collection name={request.collection_name}. Format the results in human readable form and generate output in separate rows."
     
     async def process_query(self, request: QueryRequest) -> QueryResponse:
-        """
-        Process a query through the multi-agent system.
-        
-        Args:
-            request: QueryRequest containing query details
-            
-        Returns:
-            QueryResponse with results and metadata
-        """
         start_time = time.time()
-        
         try:
-            # Ensure pipeline is initialized
             await self.initialize()
-            
-            # Create fresh session for this query
             async with self.client.session("chroma") as session:
-                # Load tools for this session
                 tools = await load_mcp_tools(session)
-                
-                # Create agents for this query
                 retriever_agent = self._create_retriever_agent(tools)
                 critique_agent = self._create_critique_agent()
-                
-                # Create supervisor with agents
                 supervisor = self._create_supervisor_agent([retriever_agent, critique_agent])
-                
-                # Format the query
                 formatted_query = self._format_query(request)
-                
-                # Setup Opik tracer
                 opik_tracer = OpikTracer(
                     graph=supervisor.get_graph(xray=True),
                     tags=["multi-agent", "marag"],
                     metadata={"environment": "development", "version": "1.0"}
                 )
-                
-                # Process query through supervisor
-                logger.info("Starting supervisor agent pipeline")
                 chunk = None
                 messages = []
-                
                 async for chunk in supervisor.astream(
                     {
                         "messages": [
@@ -160,20 +129,12 @@ class SupervisorPipeline:
                 ):
                     if chunk:
                         messages.append(chunk)
-                
-                # Extract final result
-                logger.debug(f"Pipeline result extraction starting, chunk available: {chunk is not None}")
                 if chunk is not None:
                     final_message_history = chunk["supervisor"]["messages"]
-                    # Get the last message as the final answer
                     final_answer = final_message_history[-1].content if final_message_history else "No answer generated"
                 else:
                     final_answer = "No output from supervisor."
-                
-                logger.debug(f"Final answer extracted: {len(final_answer)} characters")
                 execution_time = time.time() - start_time
-                
-                # Prepare metadata
                 metadata = {
                     "agents_used": ["retriever_query_agent", "critique_agent", "supervisor"],
                     "execution_time_seconds": round(execution_time, 2),
@@ -182,55 +143,38 @@ class SupervisorPipeline:
                     "total_chunks": len(messages),
                     "tools_available": len(tools)
                 }
-                
-                logger.debug(f"Validation check - enable_validation: {getattr(request, 'enable_validation', 'MISSING')}")
-                
-                # Run RAGAS validation if enabled
                 validation_result = None
-                logger.debug(f"Validation components - enable_validation: {request.enable_validation}, "
-                           f"has_ragas_validator: {self.ragas_validator is not None}, "
-                           f"has_agent_output_processor: {self.agent_output_processor is not None}")
                 if request.enable_validation and self.ragas_validator and self.agent_output_processor:
+                    logger.info("Validation: RAGAS started")
                     try:
-                        # Prepare agent outputs for validation
                         agent_outputs = {
                             "messages": final_message_history,
                             "supervisor_result": final_answer
                         }
-                        
-                        # LOG 1: Pipeline sending to AgentOutputProcessor
-                        logger.debug(f"Pipeline sending to AgentOutputProcessor: {len(final_message_history)} messages, "
-                                   f"supervisor result: {len(final_answer)} chars")
-                        
-                        # Process outputs to RAGAS format
                         ragas_input = self.agent_output_processor.prepare_ragas_input(
                             query=request.query_text,
                             agent_outputs=agent_outputs
                         )
-                        
-                        # Validate with RAGAS
                         validation = await self.ragas_validator.validate_response(ragas_input)
-                        
+                        logger.info("Validation: RAGAS completed")
                         validation_result = {
                             "passed": validation.passed,
                             "overall_score": validation.overall_score,
                             "metrics": validation.metrics
                         }
-                        
                     except Exception as e:
                         logger.error(f"RAGAS validation failed: {e}")
                         validation_result = {
                             "passed": False,
                             "error": str(e)
                         }
-                
+                logger.info("Pipeline: Completed")
                 return QueryResponse(
                     status="success",
                     result=final_answer,
                     metadata=metadata,
                     validation=validation_result
                 )
-            
         except Exception as e:
             execution_time = time.time() - start_time
             logger.error(f"Pipeline execution failed: {e}", exc_info=True)
@@ -244,11 +188,10 @@ class SupervisorPipeline:
             )
 
 
-# Global pipeline instance (singleton pattern)
+# Global pipeline instance
 _pipeline_instance = None
 
 async def get_pipeline() -> SupervisorPipeline:
-    """Get or create pipeline instance"""
     global _pipeline_instance
     if _pipeline_instance is None:
         _pipeline_instance = SupervisorPipeline()

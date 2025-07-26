@@ -1,7 +1,9 @@
-
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class RAGASInput(BaseModel):
@@ -10,6 +12,10 @@ class RAGASInput(BaseModel):
     contexts: List[str]
     answer: str
     ground_truth: Optional[str] = None
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        logger.info("RAGASInput instantiated")
 
 
 class ValidationResult(BaseModel):
@@ -21,6 +27,10 @@ class ValidationResult(BaseModel):
     should_retry: bool = False
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        logger.info("ValidationResult instantiated")
+
 
 class ValidationConfig(BaseModel):
     """Configuration for validation thresholds"""
@@ -31,3 +41,7 @@ class ValidationConfig(BaseModel):
     overall_threshold: float = 0.65
     max_retries: int = 2
     enabled: bool = True
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        logger.info("ValidationConfig instantiated")

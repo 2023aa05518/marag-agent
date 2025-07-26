@@ -53,23 +53,9 @@ app = FastAPI(
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Log all HTTP requests and responses"""
-    request_id = str(uuid.uuid4())[:8]
-    start_time = time.time()
-    
-    # Log incoming request
-    logger.info(f"[{request_id}] {request.method} {request.url.path} - Client: {request.client.host}")
-    logger.debug(f"[{request_id}] Headers: {dict(request.headers)}")
-    
-    # Process request
+    logger.info("API: Received query request")
     response = await call_next(request)
-    
-    # Log response
-    execution_time = time.time() - start_time
-    logger.info(f"[{request_id}] Response: {response.status_code} - {execution_time:.3f}s")
-    
-    # Add request ID to response headers
-    response.headers["X-Request-ID"] = request_id
-    
+    logger.info("API: Responded to query")
     return response
 
 
@@ -104,10 +90,14 @@ def main():
         "main:app",
         host="0.0.0.0",
         port=8100,
-        reload=True,
+        # reload=True,
         log_level="info"
     )
 
 
 if __name__ == "__main__":
     main()
+
+# Run the application with Uvicorn using below command on command prompt:
+
+# uvicorn main:app --host 0.0.0.0 --port 8100 --reload
