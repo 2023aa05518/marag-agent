@@ -50,6 +50,7 @@ class SupervisorPipeline:
                 "- Assist ONLY with retrieving query results related to vector database, DO NOT do any other activity\n"
                 "- After you're done with your tasks, respond to the supervisor directly\n"
                 "- Respond ONLY with the results of your work, do NOT include ANY other text."
+                "- If you cannot find any relevant context, respond with 'No context available to answer this question' and exit no further action needed."
             )
         )
         logger.info("Agent: Retriever completed")
@@ -69,6 +70,7 @@ class SupervisorPipeline:
                 "- Respond with a message to the supervisor to re-run the query with more context.\n"
                 "- If the answer is from the provided context , respond with 'APPROVED' and a brief justification.\n"
                 "- Respond ONLY with your judgment and reasoning, do NOT include any other text."
+                "- If you cannot find any relevant context, respond with 'No context available to answer this question' and exit no further action needed."
             )
         )
         logger.info("Agent: Critique completed")
@@ -84,11 +86,12 @@ class SupervisorPipeline:
                 "- A retriever agent for document queries.\n"
                 "- A critique agent (judge) to check for hallucination and completeness.\n"
                 "Workflow:\n"
-                "1. Assign the query to the retriever agent.\n"
-                "2. Pass the retriever's answer and context to the critique agent.\n"
-                "3. If the critique agent requests more context, re-run the retriever agent with an expanded query.\n"
-                "4. Repeat process only one time the critique agent approves the answer.\n"
-                "Do not do any work yourself. Assign work to one agent at a time."
+                "- Assign the query to the retriever agent.\n"
+                "- If the retriever agent returns no results then send user response 'No context available to answer this question' and exit no further action needed \n"
+                "- If the retriever agent returns results: then only pass the results to the critique agent.\n"
+                "- If the critique agent requests more context, re-run the retriever agent with an expanded query.\n"
+                "- Repeat process only one time the critique agent approves the answer.\n"
+                "- Do not do any work yourself. Assign work to one agent at a time."
             ),
             add_handoff_back_messages=True,
             output_mode="full_history",
