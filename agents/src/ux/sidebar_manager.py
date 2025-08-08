@@ -30,7 +30,7 @@ class SidebarManager:
 
     def render(self):
         st.sidebar.title("Chat Sessions")
-        if st.sidebar.button("➕ New Chat"):
+        if st.sidebar.button("➕ New Question"):
             self.session_manager.create_new_session()
             st.rerun()
 

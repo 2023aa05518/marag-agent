@@ -36,3 +36,17 @@ services:
       - CHROMA_CUSTOM_AUTH_CREDENTIALS=my-secret-token
       - CHROMA_AUTH_HEADER=X_CHROMA_TOKEN
       - CHROMA_SSL=False
+      - CHROMA_TENANT="stp"
+      - CHROMA_DATABASE="support"
+
+  chromadb-admin:
+    image: fengzhichao/chromadb-admin
+    container_name: chromadb-admin
+    networks:
+      - chroma-net
+    ports:
+      - "3001:3001"
+    depends_on:
+      - chromadb
+    environment:
+      - CHROMA_SERVER_URL=http://chromadb:8000

@@ -41,10 +41,12 @@ def test_query_endpoint():
     # Same query as test_simple_pipeline.py
     query_data = {
         # "query_text": "What are the primary environmental challenges India is facing?",
-        "query_text": "Why is the sky blue?",
+        # "query_text": "Why is the sky blue?",
+        "query_text": "how to export spectrum dataflow? ",
         "collection_name": "docs",
         "k": 2,
-        "enable_validation": True
+        
+        "enable_validation": False
     }
     
     print(f"Processing query: {query_data['query_text']}")
@@ -70,6 +72,16 @@ def test_query_endpoint():
             print(f"API response time: {end_time - start_time:.2f}s")
             print(f"Server execution time: {result.get('metadata', {}).get('execution_time_seconds', 'N/A')}s")
             print(f"Agents used: {result.get('metadata', {}).get('agents_used', [])}")
+            
+            # Print source metadata if available
+            metadata = result.get('metadata', {})
+            if 'sources' in metadata and metadata['sources']:
+                print(f"Sources found in metadata: {len(metadata['sources'])}")
+                for i, source in enumerate(metadata['sources']):
+                    print(f"  Source {i+1}: Document: {source.get('document_name', 'N/A')}, Page: {source.get('page_number', 'N/A')}")
+            else:
+                print("No sources found in metadata")
+                
             print("-" * 50)
             print("Result:")
             print(result.get('result', 'No result available'))

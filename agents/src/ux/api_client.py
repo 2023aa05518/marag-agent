@@ -9,7 +9,6 @@ class ApiClient:
         try:
             resp = requests.post(self.api_url, json=payload)
             resp.raise_for_status()
-            # Change 'response' to 'result' below
-            return resp.json().get("result", "[No result found]")
+            return resp.json()
         except Exception as e:
-            return f"[API error: {e}]"
+            return {"result": f"[API error: {e}]", "metadata": None}

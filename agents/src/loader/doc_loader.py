@@ -38,19 +38,25 @@ def load_pdf_documents() -> List[Document]:
     return documents
 
 def create_text_chunks(documents: List[Document]) -> List[Document]:
-    """Create text chunks of size 300 with overlap 100"""
+    """Create text chunks with sequential page numbering to avoid duplicates"""
     logger.info("Creating text chunks...")
-    splitter = TokenTextSplitter(chunk_size=300, chunk_overlap=100)
+    splitter = TokenTextSplitter(chunk_size=500, chunk_overlap=100)
     chunks = []
     
-    for doc in documents:
+    # Add sequential index to each document page
+    for seq_idx, doc in enumerate(documents):
+        doc.metadata["sequence_index"] = seq_idx
+        doc.metadata["original_page_number"] = doc.metadata["page"]
+        
         doc_chunks = splitter.split_documents([doc])
         
-        # Add chunk metadata
-        for idx, chunk in enumerate(doc_chunks):
+        # Generate unique chunk IDs using sequential index
+        for chunk_idx, chunk in enumerate(doc_chunks):
             chunk.metadata.update({
-                "chunk_index": idx,
-                "chunk_id": f"{chunk.metadata['doc_name']}_page{chunk.metadata['page']}_chunk{idx}"
+                "chunk_index": chunk_idx,
+                "sequence_index": seq_idx,
+                "original_page_number": chunk.metadata["page"],
+                "chunk_id": f"{chunk.metadata['doc_name']}_seq{seq_idx:03d}_chunk{chunk_idx}"
             })
         
         chunks.extend(doc_chunks)

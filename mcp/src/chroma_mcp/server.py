@@ -188,6 +188,7 @@ mcp_known_embedding_functions: Dict[str, EmbeddingFunction] = {
     "voyageai": VoyageAIEmbeddingFunction,
     "roboflow": RoboflowEmbeddingFunction,
 }
+
 @mcp.tool()
 async def chroma_create_collection(
     collection_name: str,

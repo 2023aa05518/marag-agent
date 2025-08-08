@@ -41,6 +41,8 @@ async def process_query(
         else:
             logger.warning(f"[{request_id}] Query processing failed after {execution_time:.2f}s: {result.result}")
         
+        # print result for debugging
+        logger.info(f"[{request_id}] \n Result: \n {result}")
         return result
         
     except Exception as e:

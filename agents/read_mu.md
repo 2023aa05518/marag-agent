@@ -10,6 +10,15 @@ uvicorn main:app --host 0.0.0.0 --port 8100 --reload
     uv run src/agents/supervisor.py
     or
     uv run main.py
+    ## This will start the uvcron server hosting the actual api
+        INFO:     Application startup complete.
+        INFO:     Uvicorn running on http://0.0.0.0:8100 (Press CTRL+C to quit)
+
+    Run
+    uv run streamlit run src/ux/main.py
+        Local URL: http://localhost:8501
+        Network URL: http://192.168.1.3:8501
+
 
 ## Environment Configuration
 

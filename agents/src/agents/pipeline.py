@@ -45,12 +45,14 @@ class SupervisorPipeline:
                 "You are a document retriever agent. your job is to query collection and return the relevant records\n\n"
                 "INSTRUCTIONS:\n"
                 "- extract the collection name from query text . if not present then return with valid reason and ask for collection information."
-                "- query collection name using given query_text "
-                "- Return tenent and database name along with collection name in the response to supervisor"
+                "- make a query to collection name using given query_text and fetch the relevant records"
+                "- Return collection name in the response to supervisor"
+                "- IMPORTANT: Include source metadata (document name, page number, chunk index) for each retrieved document in your response"
+                "- Format the metadata as: Source: [document_name, page_number, chunk_index] for each relevant document"
                 "- Assist ONLY with retrieving query results related to vector database, DO NOT do any other activity\n"
                 "- After you're done with your tasks, respond to the supervisor directly\n"
-                "- Respond ONLY with the results of your work, do NOT include ANY other text."
-                "- If you cannot find any relevant context, respond with 'No context available to answer this question' and exit no further action needed."
+                "- Respond ONLY with the results retrieved from vector database, do NOT include ANY other text."
+                "- If you cannot find any relevant context or document in vector database, respond with 'No context available to answer this question' and exit no further action needed."
             )
         )
         logger.info("Agent: Retriever completed")
@@ -83,15 +85,18 @@ class SupervisorPipeline:
             agents=agents,
             prompt=(
                 "You are a supervisor managing agents:\n"
-                "- A retriever agent for document queries.\n"
-                "- A critique agent (judge) to check for hallucination and completeness.\n"
+                "- A retriever agent which fetch documents from vector database.\n"
+                "- A critique agent act as a judge to check for hallucination and completeness.\n"
                 "Workflow:\n"
-                "- Assign the query to the retriever agent.\n"
+                "- Assign the query received from user to the retriever agent.\n"
                 "- If the retriever agent returns no results then send user response 'No context available to answer this question' and exit no further action needed \n"
                 "- If the retriever agent returns results: then only pass the results to the critique agent.\n"
                 "- If the critique agent requests more context, re-run the retriever agent with an expanded query.\n"
                 "- Repeat process only one time the critique agent approves the answer.\n"
                 "- Do not do any work yourself. Assign work to one agent at a time."
+                "- IMPORTANT: In your final response, include source metadata at the end in a 'Sources:' section"
+                "- Format sources as: Sources: [Document: filename, Page: X] for each source document used"
+                "- Only return the proper answer, do not include agent messages or other text"
             ),
             add_handoff_back_messages=True,
             output_mode="full_history",
@@ -100,7 +105,28 @@ class SupervisorPipeline:
         return agent
     
     def _format_query(self, request: QueryRequest) -> str:
-        return f"query_text= {request.query_text}. Fetch results k={request.k}. from collection name={request.collection_name}. Format the results in human readable form and generate output in separate rows."
+        query_text=f"{request.query_text}. Fetch results k={request.k}. from collection name={request.collection_name}. Format the results in human readable form and generate output in separate rows."
+        logger.info(f"Formatted query: {query_text}")
+        return query_text
+    
+    def _extract_source_metadata(self, response_text: str) -> List[Dict[str, Any]]:
+        """Extract source metadata from the supervisor's response"""
+        sources = []
+        if "Sources:" in response_text:
+            # Extract the sources section
+            sources_section = response_text.split("Sources:")[-1].strip()
+            # Look for pattern [Document: name, Page: number]
+            import re
+            pattern = r'\[Document:\s*([^,]+),\s*Page:\s*([^\]]+)\]'
+            matches = re.findall(pattern, sources_section)
+            
+            for doc_name, page_num in matches:
+                sources.append({
+                    "document_name": doc_name.strip(),
+                    "page_number": page_num.strip()
+                })
+        
+        return sources
     
     async def process_query(self, request: QueryRequest) -> QueryResponse:
         start_time = time.time()
@@ -138,13 +164,18 @@ class SupervisorPipeline:
                 else:
                     final_answer = "No output from supervisor."
                 execution_time = time.time() - start_time
+                
+                # Extract source metadata from the response
+                source_metadata = self._extract_source_metadata(final_answer)
+                
                 metadata = {
                     "agents_used": ["retriever_query_agent", "critique_agent", "supervisor"],
                     "execution_time_seconds": round(execution_time, 2),
                     "collection_name": request.collection_name,
                     "k_results": request.k,
                     "total_chunks": len(messages),
-                    "tools_available": len(tools)
+                    "tools_available": len(tools),
+                    "sources": source_metadata
                 }
                 validation_result = None
                 if request.enable_validation and self.ragas_validator and self.agent_output_processor:
@@ -172,9 +203,16 @@ class SupervisorPipeline:
                             "error": str(e)
                         }
                 logger.info("Pipeline: Completed")
+                
+                # Clean sources from final answer before returning to user
+                if "Sources:" in final_answer:
+                    clean_final_answer = final_answer.split("Sources:")[0].strip()
+                else:
+                    clean_final_answer = final_answer
+
                 return QueryResponse(
                     status="success",
-                    result=final_answer,
+                    result=clean_final_answer,  # Clean response without sources
                     metadata=metadata,
                     validation=validation_result
                 )

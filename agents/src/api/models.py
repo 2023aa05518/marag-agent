@@ -12,7 +12,7 @@ class QueryRequest(BaseModel):
    
     query_text: str = Field(..., description="The query text to process")
     collection_name: str = Field(default="docs", description="ChromaDB collection name")
-    k: int = Field(default=2, description="Number of results to fetch")
+    k: int = Field(default=5, description="Number of results to fetch")
     enable_validation: bool = Field(default=False, description="Enable RAGAS validation of the response")
     
 
