@@ -10,15 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 def pdf_to_chromadb_pipeline() -> bool:
-    """PDF to ChromaDB indexing pipeline."""
     logger.info("Starting PDF to ChromaDB indexing pipeline...")
     
     try:
-        # Process documents using the new class-based approach
         processor = DocumentProcessor()
         collection_data = processor.process_pdfs()
         
-        # Setup ChromaDB and store
         chroma_client, success = setup_chroma_client()
         if not success:
             logger.error("Failed to setup ChromaDB")

@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentProcessor:
-    """Document processor for loading and chunking PDFs."""
     
     def __init__(self, chunk_size: int = CHUNK_SIZE, chunk_overlap: int = CHUNK_OVERLAP):
         self.chunk_size = chunk_size
@@ -90,5 +89,4 @@ class DocumentProcessor:
         return {"ids": ids, "documents": texts, "metadatas": metadatas}
     
     def process_pdfs(self, data_path: Path = DATA_DIR) -> Dict:
-        """Complete processing pipeline: load -> chunk -> prepare."""
         return self.load_pdfs(data_path).create_chunks().prepare_data()

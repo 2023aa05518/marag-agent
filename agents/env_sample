@@ -1,8 +1,32 @@
+# ==========================================
+# LLM PROVIDER CONFIGURATION
+# ==========================================
 GOOGLE_API_KEY=''
+
+# ==========================================
+# TRACING & MONITORING CONFIGURATION
+# ==========================================
+# LangSmith Configuration
 LANGSMITH_TRACING=true
 LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
 LANGSMITH_API_KEY=""
 LANGSMITH_PROJECT=""
 
+# Opik Configuration
 OPIK_API_KEY=''
 OPIK_WORKSPACE = ""
+
+# ==========================================
+# DOCUMENT LOADER CONFIGURATION
+# ==========================================
+LOADER_DATA_DIR=data
+LOADER_CHUNK_SIZE=500
+LOADER_CHUNK_OVERLAP=100
+
+# ==========================================
+# DATABASE CONFIGURATION
+# ==========================================
+DB_CHROMA_HOST=localhost
+DB_CHROMA_PORT=8001
+DB_CHROMA_AUTH_TOKEN=
+DB_CHROMA_COLLECTION=docs
